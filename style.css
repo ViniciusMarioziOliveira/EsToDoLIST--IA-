@@ -1,0 +1,27 @@
+body {
+  font-family: "Comic Sans MS", cursive, sans-serif;
+}
+
+.filtro-btn {
+  display: block;
+  text-align: center;
+  font-weight: bold;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.filtro-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.03);
+}
+
+.active-btn {
+  outline: 3px solid #16a34a;
+}
+
+.concluida .tarefa-texto {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
