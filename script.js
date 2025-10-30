@@ -1,9 +1,10 @@
 // =============================================================
-// EsToDoList - CRUD com barra lateral e tarefas excluídas
+// EsToDoList - Barra lateral + Pesquisa + Restaurar Excluídas
 // =============================================================
 
 var campoNovaTarefa = document.getElementById('nova-tarefa-input')
 var botaoAdicionar = document.getElementById('adicionar-btn')
+var campoPesquisa = document.getElementById('pesquisa-input')
 var listaTarefas = document.getElementById('lista-de-tarefas')
 
 var btnAndamento = document.getElementById('btn-andamento')
@@ -15,7 +16,7 @@ var excluidas = []
 var filtroAtual = 'andamento'
 
 // -------------------------------
-// Carregar dados salvos
+// Carregar dados
 // -------------------------------
 function carregarTarefasSalvas() {
   var salvas = localStorage.getItem('tarefas')
@@ -57,25 +58,18 @@ function adicionarTarefa() {
 // -------------------------------
 // Exibir tarefas
 // -------------------------------
-function exibirTarefas() {
+function exibirTarefas(listaFiltrada) {
   listaTarefas.innerHTML = ''
-  var listaMostrar = []
-
-  if (filtroAtual === 'andamento') {
-    listaMostrar = tarefas.filter(function (t) {
-      return !t.concluida
-    })
-  } else if (filtroAtual === 'concluidas') {
-    listaMostrar = tarefas.filter(function (t) {
-      return t.concluida
-    })
-  } else if (filtroAtual === 'excluidas') {
-    listaMostrar = excluidas
-  }
+  var listaMostrar = listaFiltrada || []
 
   if (listaMostrar.length === 0) {
-    listaTarefas.innerHTML =
-      '<p class="text-gray-500 text-center py-4">Nenhuma tarefa aqui 😴</p>'
+    if (filtroAtual === 'pesquisa') {
+      listaTarefas.innerHTML =
+        '<p class="text-gray-500 text-center py-4">Nenhuma tarefa encontrada 🔍</p>'
+    } else {
+      listaTarefas.innerHTML =
+        '<p class="text-gray-500 text-center py-4">Nenhuma tarefa aqui 😴</p>'
+    }
     return
   }
 
@@ -85,26 +79,34 @@ function exibirTarefas() {
     item.className =
       'flex justify-between items-center p-3 border rounded-lg shadow-sm bg-gray-50 hover:bg-gray-100 transition'
 
-    if (tarefa.concluida) {
-      item.classList.add('concluida')
-    }
+    if (tarefa.concluida) item.classList.add('concluida')
 
     var textoTarefa = document.createElement('span')
     textoTarefa.textContent = tarefa.texto
     textoTarefa.className = 'tarefa-texto flex-grow cursor-pointer'
 
-    if (filtroAtual !== 'excluidas') {
+    var botoes = document.createElement('div')
+    botoes.className = 'flex space-x-2'
+
+    if (filtroAtual === 'excluidas') {
+      var botaoRestaurar = document.createElement('button')
+      botaoRestaurar.textContent = '↩️'
+      botaoRestaurar.className =
+        'px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded'
+      botaoRestaurar.onclick = (function (id) {
+        return function () {
+          restaurarTarefa(id)
+        }
+      })(tarefa.id)
+
+      botoes.appendChild(botaoRestaurar)
+    } else {
       textoTarefa.onclick = (function (id) {
         return function () {
           alternarConclusao(id)
         }
       })(tarefa.id)
-    }
 
-    var botoes = document.createElement('div')
-    botoes.className = 'flex space-x-2'
-
-    if (filtroAtual !== 'excluidas') {
       var botaoEditar = document.createElement('button')
       botaoEditar.textContent = '✏️'
       botaoEditar.className =
@@ -136,6 +138,24 @@ function exibirTarefas() {
 }
 
 // -------------------------------
+// Pesquisa (todas as tarefas)
+// -------------------------------
+function pesquisarTarefas() {
+  var termo = campoPesquisa.value.trim().toLowerCase()
+  if (termo === '') {
+    definirFiltro(filtroAtual)
+    return
+  }
+
+  filtroAtual = 'pesquisa'
+  var todas = tarefas.concat(excluidas)
+  var filtradas = todas.filter(function (t) {
+    return t.texto.toLowerCase().includes(termo)
+  })
+  exibirTarefas(filtradas)
+}
+
+// -------------------------------
 // Alternar conclusão
 // -------------------------------
 function alternarConclusao(id) {
@@ -145,7 +165,7 @@ function alternarConclusao(id) {
     }
   }
   salvarTarefas()
-  exibirTarefas()
+  definirFiltro(filtroAtual)
 }
 
 // -------------------------------
@@ -161,11 +181,11 @@ function editarTarefa(id) {
     }
   }
   salvarTarefas()
-  exibirTarefas()
+  definirFiltro(filtroAtual)
 }
 
 // -------------------------------
-// Excluir tarefa (move para “excluídas”)
+// Excluir tarefa
 // -------------------------------
 function excluirTarefa(id) {
   var confirmar = window.confirm('Deseja realmente excluir esta tarefa?')
@@ -174,21 +194,36 @@ function excluirTarefa(id) {
   var removida = tarefas.find(function (t) {
     return t.id === id
   })
-
-  if (removida) {
-    excluidas.push(removida)
-  }
+  if (removida) excluidas.push(removida)
 
   tarefas = tarefas.filter(function (t) {
     return t.id !== id
   })
 
   salvarTarefas()
-  exibirTarefas()
+  definirFiltro(filtroAtual)
 }
 
 // -------------------------------
-// Importar e exportar
+// Restaurar tarefa
+// -------------------------------
+function restaurarTarefa(id) {
+  var tarefa = excluidas.find(function (t) {
+    return t.id === id
+  })
+  if (!tarefa) return
+
+  tarefas.push(tarefa)
+  excluidas = excluidas.filter(function (t) {
+    return t.id !== id
+  })
+
+  salvarTarefas()
+  definirFiltro('andamento')
+}
+
+// -------------------------------
+// Importar / Exportar
 // -------------------------------
 function exportarTarefas() {
   var dados = JSON.stringify(
@@ -221,7 +256,7 @@ function importarTarefas() {
           tarefas = conteudo.tarefas
           excluidas = conteudo.excluidas
           salvarTarefas()
-          exibirTarefas()
+          definirFiltro('andamento')
           alert('Tarefas importadas com sucesso!')
         } else {
           alert('Arquivo inválido!')
@@ -240,7 +275,6 @@ function importarTarefas() {
 // -------------------------------
 function definirFiltro(tipo) {
   filtroAtual = tipo
-
   var botoes = document.querySelectorAll('.filtro-btn')
   botoes.forEach(function (b) {
     b.classList.remove('active-btn')
@@ -250,7 +284,20 @@ function definirFiltro(tipo) {
   if (tipo === 'concluidas') btnConcluidas.classList.add('active-btn')
   if (tipo === 'excluidas') btnExcluidas.classList.add('active-btn')
 
-  exibirTarefas()
+  var listaMostrar = []
+  if (tipo === 'andamento') {
+    listaMostrar = tarefas.filter(function (t) {
+      return !t.concluida
+    })
+  } else if (tipo === 'concluidas') {
+    listaMostrar = tarefas.filter(function (t) {
+      return t.concluida
+    })
+  } else if (tipo === 'excluidas') {
+    listaMostrar = excluidas
+  }
+
+  exibirTarefas(listaMostrar)
 }
 
 // -------------------------------
@@ -260,6 +307,8 @@ botaoAdicionar.addEventListener('click', adicionarTarefa)
 campoNovaTarefa.addEventListener('keydown', function (e) {
   if (e.key === 'Enter') adicionarTarefa()
 })
+
+campoPesquisa.addEventListener('input', pesquisarTarefas)
 
 btnAndamento.addEventListener('click', function () {
   definirFiltro('andamento')
@@ -275,6 +324,6 @@ document.getElementById('exportar-btn').addEventListener('click', exportarTarefa
 document.getElementById('importar-btn').addEventListener('click', importarTarefas)
 
 // -------------------------------
-// Inicializar
+// Inicialização
 // -------------------------------
 window.onload = carregarTarefasSalvas
